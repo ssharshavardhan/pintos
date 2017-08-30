@@ -298,6 +298,24 @@ thread_tid (void)
 
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
+// void
+// thread_exit (void) 
+// {
+//   ASSERT (!intr_context ());
+
+// #ifdef USERPROG
+//   process_exit ();
+// #endif
+
+//    Remove thread from all threads list, set our status to dying,
+//      and schedule another process.  That process will destroy us
+//      when it call schedule_tail(). 
+//   intr_disable ();
+//   struct list_elem* x= list_remove (&thread_current()->allelem);
+//   thread_current ()->status = THREAD_DYING;
+//   schedule ();
+//   NOT_REACHED ();
+// }
 void
 thread_exit (void) 
 {
@@ -309,13 +327,14 @@ thread_exit (void)
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
-     when it call schedule_tail(). */
+     when it calls thread_schedule_tail(). */
   intr_disable ();
-  struct list_elem* x= list_remove (&thread_current()->allelem);
+  list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
+
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
