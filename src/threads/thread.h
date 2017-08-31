@@ -4,8 +4,14 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+<<<<<<< HEAD
 #include "synch.h"
 #include "fixed_point.h"
+=======
+#include "fixed_point.h"
+#include "synch.h"
+
+>>>>>>> 86e0f62d9303b93985c774a9747447747dd99909
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -82,6 +88,31 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+// struct thread
+//   {
+//     /* Owned by thread.c. */
+//     tid_t tid;                          /* Thread identifier. */
+//     enum thread_status status;          /* Thread state. */
+//     char name[16];                      /* Name (for debugging purposes). */
+//     uint8_t *stack;                     /* Saved stack pointer. */
+//     int priority;                       /* Priority. */
+//     struct list_elem allelem;            List element for all threads list. 
+
+//     int old_priority;
+//     int64_t wakeup_at;
+
+//     /* Shared between thread.c and synch.c. */
+//     struct list_elem elem;              /* List element. */
+
+// #ifdef USERPROG
+//     /* Owned by userprog/process.c. */
+//     uint32_t *pagedir;                  /* Page directory. */
+// #endif
+
+//     /* Owned by thread.c. */
+//     unsigned magic;                     /* Detects stack overflow. */
+//   };
+
 struct thread
 {
     /* Owned by thread.c. */
@@ -92,6 +123,7 @@ struct thread
     int priority;                       /* Priority. */
     int base_priority;                  /* Base priority for priority donation */
     struct list_elem allelem;           /* List element for all threads list. */
+<<<<<<< HEAD
     
     /* Shared between thread.c, synch.c and timer.c. */
     struct list_elem elem;              /* List element. */
@@ -105,6 +137,21 @@ struct thread
     int64_t wakeup_ticks;               /* Wakeup ticks used by timer sleep */
     
     
+=======
+
+    /* Shared between thread.c, synch.c and timer.c. */
+    struct list_elem elem;              /* List element. */
+
+    struct list locks;                  /* Locks held for priority donation. */
+    struct lock *lock_waiting;          /* Lock waiting on for priority donation. */
+
+    int nice;                           /* Niceness for 4.4BSD scheduler. */
+    fixed_t recent_cpu;                 /* Recent CPU for 4.4BSD scheduler. */
+
+    int64_t wakeup_ticks;               /* Wakeup ticks used by timer sleep */
+    
+
+>>>>>>> 86e0f62d9303b93985c774a9747447747dd99909
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -165,7 +212,12 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-bool thread_wakeup_ticks_less(const struct list_elem *,const struct list_elem *,void *);
-bool thread_priority_large(const struct list_elem *,const struct list_elem *,void *);
+bool thread_wakeup_ticks_less(const struct list_elem *,
+                              const struct list_elem *,
+                              void *);
+bool thread_priority_large(const struct list_elem *,
+                           const struct list_elem *,
+                           void *);
+
 
 #endif /* threads/thread.h */

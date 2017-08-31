@@ -222,7 +222,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  thread_yield();
+
   return tid;
 }
 
@@ -299,6 +299,24 @@ thread_tid (void)
 
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
+// void
+// thread_exit (void) 
+// {
+//   ASSERT (!intr_context ());
+
+// #ifdef USERPROG
+//   process_exit ();
+// #endif
+
+//    Remove thread from all threads list, set our status to dying,
+//      and schedule another process.  That process will destroy us
+//      when it call schedule_tail(). 
+//   intr_disable ();
+//   struct list_elem* x= list_remove (&thread_current()->allelem);
+//   thread_current ()->status = THREAD_DYING;
+//   schedule ();
+//   NOT_REACHED ();
+// }
 void
 thread_exit (void) 
 {
@@ -310,13 +328,14 @@ thread_exit (void)
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
-     when it call schedule_tail(). */
+     when it calls thread_schedule_tail(). */
   intr_disable ();
-  struct list_elem* x= list_remove (&thread_current()->allelem);
+  list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
+
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
@@ -353,6 +372,7 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+<<<<<<< HEAD
 void thread_set_priority (int new_priority)
 {
     if (thread_mlfqs)
@@ -375,6 +395,13 @@ void thread_set_priority (int new_priority)
     }
     
     intr_set_level (old_level);
+=======
+/* Sets the current thread's priority to NEW_PRIORITY. */
+void
+thread_set_priority (int new_priority) 
+{
+  thread_current ()->priority = new_priority;
+>>>>>>> 86e0f62d9303b93985c774a9747447747dd99909
 }
 
 /* Returns the current thread's priority. */
@@ -478,6 +505,27 @@ thread_get_recent_cpu (void)
   return 0;
 }
 
+/* Compare wakeup ticks of two threads */
+bool
+thread_wakeup_ticks_less(const struct list_elem *a,
+                         const struct list_elem *b,
+                         void *aux UNUSED)
+{
+  struct thread *pta = list_entry (a, struct thread, elem);
+  struct thread *ptb = list_entry (b, struct thread, elem);
+  return pta->wakeup_ticks < ptb->wakeup_ticks;
+}
+
+/* Compare priority of two thread. */
+bool
+thread_priority_large(const struct list_elem *a,
+                      const struct list_elem *b,
+                      void *aux UNUSED)
+{
+  struct thread *pta = list_entry (a, struct thread, elem);
+  struct thread *ptb = list_entry (b, struct thread, elem);
+  return pta->priority > ptb->priority;
+}
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
