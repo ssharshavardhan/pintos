@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
+#include "fixed_point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -81,29 +83,36 @@ typedef int tid_t;
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
 struct thread
-  {
+{
     /* Owned by thread.c. */
     tid_t tid;                          /* Thread identifier. */
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int base_priority;                  /* Base priority for priority donation */
     struct list_elem allelem;           /* List element for all threads list. */
-
-    int old_priority;
-    int64_t wakeup_at;
-
-    /* Shared between thread.c and synch.c. */
+    
+    /* Shared between thread.c, synch.c and timer.c. */
     struct list_elem elem;              /* List element. */
-
+    
+    struct list locks;                  /* Locks held for priority donation. */
+    struct lock *lock_waiting;          /* Lock waiting on for priority donation. */
+    
+    int nice;                           /* Niceness for 4.4BSD scheduler. */
+    fixed_t recent_cpu;                 /* Recent CPU for 4.4BSD scheduler. */
+    
+    int64_t wakeup_ticks;               /* Wakeup ticks used by timer sleep */
+    
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-
+    
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-  };
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -118,14 +127,14 @@ void thread_print_stats (void);
 
 
 
-// My changes
+/*// My changes
 static bool sleep_less(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
 static bool priority_more(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
 void thread_priority_temporarily_up(struct thread * t);
 void thread_block_till(int64_t wakeup_at);
 void thread_priority_restore(struct thread * t);
 void thread_set_next_wakeup(void);
-
+*/
 
 
 typedef void thread_func (void *aux);
@@ -144,6 +153,9 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+
+void thread_add_lock (struct lock *);
+void thread_remove_lock (struct lock *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
