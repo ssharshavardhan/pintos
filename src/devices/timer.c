@@ -9,6 +9,65 @@
 #include "threads/thread.h"
 #include "threads/alarm.h"
 
+/* Initialize the alarm list */
+void
+alarm_init (void)
+{
+    list_init (&alarm_list);
+    prev_ticks = timer_ticks ();
+    ASSERT (list_empty (&alarm_list));
+}
+
+/* Initialize the alarm object */
+void
+set_alarm (int64_t t)
+{
+    struct thread *thrd;
+    struct alarm *alrm;
+    
+    thrd = thread_current (); /* the current thread */
+    
+    /* if t == 0 then do nothing */
+    if (t == 0)
+        return;
+    
+    ASSERT (thrd->status == THREAD_RUNNING);
+    
+    alrm = &thrd->alrm;
+    
+    alrm->thrd = thrd;
+    
+    alrm->ticks = t + timer_ticks (); /* set the tick count to t plus current timer ticks */
+    alrm->magic = ALARM_MAGIC;
+    
+    /* add to alarm_list, critical section */
+    intr_disable ();
+    list_push_back (&alarm_list, &alrm->elem);
+    
+    /* block the thread */
+    thread_block ();
+    intr_enable ();
+}
+
+void
+alarm_check (void)
+{
+    struct list_elem *tmp, *next;
+    struct alarm *alrm;
+    
+    tmp = list_begin (&alarm_list);
+    
+    while (tmp != list_end (&alarm_list))
+    {
+        alrm = list_entry (tmp, struct alarm, elem);
+        next = list_next (tmp);
+        if (alrm->ticks <= timer_ticks ())
+            dismiss_alarm (alrm);
+        tmp = next;
+    }
+}
+
+
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
