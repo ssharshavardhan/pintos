@@ -3,11 +3,13 @@
 #include <inttypes.h>
 #include <round.h>
 #include <stdio.h>
-#include "devices/pit.h"
 #include "threads/interrupt.h"
+#include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-#include <kernel/list.h>
+/* My Implementation */
+#include "threads/alarm.h"
+/* == My Implementation */
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -21,8 +23,6 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
-struct list sleep_list;
-
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -33,14 +33,21 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-/* Sets up the timer to interrupt TIMER_FREQ times per second,
-   and registers the corresponding interrupt. */
+/* Sets up the 8254 Programmable Interval Timer (PIT) to
+   interrupt PIT_FREQ times per second, and registers the
+   corresponding interrupt. */
 void
 timer_init (void) 
 {
-  pit_configure_channel (0, 2, TIMER_FREQ);
+  /* 8254 input frequency divided by TIMER_FREQ, rounded to
+     nearest. */
+  uint16_t count = (1193180 + TIMER_FREQ / 2) / TIMER_FREQ;
+
+  outb (0x43, 0x34);    /* CW: counter 0, LSB then MSB, mode 2, binary. */
+  outb (0x40, count & 0xff);
+  outb (0x40, count >> 8);
+
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-  list_init (&sleep_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -77,6 +84,7 @@ timer_ticks (void)
   enum intr_level old_level = intr_disable ();
   int64_t t = ticks;
   intr_set_level (old_level);
+  barrier ();
   return t;
 }
 
@@ -93,24 +101,17 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-
-	struct thread* curthread;
-	enum intr_level curlevel;
+  /* Old Implementation
+  int64_t start = timer_ticks (); */
 
   ASSERT (intr_get_level () == INTR_ON);
-
-  curlevel = intr_disable();
-
-  curthread = thread_current();
-
-  curthread->waketick = timer_ticks() + ticks;
-
-  list_insert_ordered (&sleep_list, &curthread->elem, cmp_waketick, NULL);
-
-  thread_block();
-
-  intr_set_level(curlevel);
-
+  /* Old Implementation
+  while (timer_elapsed (start) < ticks) 
+    thread_yield (); */
+    
+  /* My Implementation */
+  set_alarm (ticks);
+  /* == My Implementation */
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -187,24 +188,8 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-	struct list_elem *head;
-	struct thread *hthread;
-
   ticks++;
   thread_tick ();
-
-
-	while(!list_empty(&sleep_list))
-	{
-		head = list_front(&sleep_list);
-	  hthread = list_entry (head, struct thread, elem);
-
-	  	if(hthread->waketick > ticks )
-	  		break;
-
-	  	list_remove (head);
-	  	thread_unblock(hthread);
-	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
