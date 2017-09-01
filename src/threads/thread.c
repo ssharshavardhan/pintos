@@ -1,4 +1,7 @@
 #include "threads/thread.h"
+/* My Implementation */
+#include "threads/alarm.h"
+/* == My Implementation */
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -68,8 +71,15 @@ static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
-void thread_schedule_tail (struct thread *prev);
+void schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+
+/* My Implementation */
+static bool thread_sort_less (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED);
+static bool thread_insert_less_head (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED);
+static bool thread_insert_less_tail (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED);
+/* == My Implementation */
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -174,6 +184,10 @@ thread_create (const char *name, int priority,
   enum intr_level old_level;
 
   ASSERT (function != NULL);
+  
+  /* My Implementation */
+  ASSERT (priority >= PRI_MIN && priority <= PRI_MAX);
+  /* == My Implementation */
 
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
@@ -205,16 +219,14 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-
   /* Add to run queue. */
   thread_unblock (t);
-
-  old_level = intr_disable ();
-  if(t->priority > thread_current()->priority)
-    thread_yield();
-
-  intr_set_level (old_level);
-
+  
+  /* My Implementation */
+  if (priority > thread_current ()->priority)
+    thread_yield_head (thread_current ()); 
+  /* == My Implementation */
+  
   return tid;
 }
 
@@ -251,10 +263,12 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
-  list_sort (&ready_list, cmp_priority, NULL);
+  /* Old Implementation
+  list_push_back (&ready_list, &t->elem); */
+  /* My Implementation */
+  list_insert_ordered (&ready_list, &t->elem, thread_insert_less_tail, NULL);
+  /* == My Implementation */
   t->status = THREAD_READY;
-
   intr_set_level (old_level);
 }
 
@@ -304,9 +318,8 @@ thread_exit (void)
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
-     when it calls thread_schedule_tail(). */
+     when it call schedule_tail(). */
   intr_disable ();
-
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -318,7 +331,6 @@ thread_exit (void)
 void
 thread_yield (void) 
 {
-
   struct thread *cur = thread_current ();
   enum intr_level old_level;
   
@@ -326,14 +338,36 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-  {
-    list_push_back (&ready_list, &cur->elem);
-    list_sort (&ready_list, cmp_priority, NULL);
-  }
+    /* Old Implementation
+    list_push_back (&ready_list, &cur->elem); */
+    /* My Implementation */
+    list_insert_ordered (&ready_list, &cur->elem, thread_insert_less_tail, NULL);
+    /* == My Implementation */
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
+
+/* My Implementation */
+void
+thread_yield_head (struct thread *cur)
+{
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  if (cur != idle_thread)
+    /* Old Implementation
+    list_push_back (&ready_list, &cur->elem); */
+    /* My Implementation */
+    list_insert_ordered (&ready_list, &cur->elem, thread_insert_less_head, NULL);
+    /* == My Implementation */
+  cur->status = THREAD_READY;
+  schedule ();
+  intr_set_level (old_level);
+}
+/* == My Implementation */
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
@@ -356,32 +390,47 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  enum intr_level old_level;
-
-  old_level = intr_disable ();
-  if(list_empty(&thread_current()->pot_donors))
-  {
-    thread_current()->priority = new_priority; 
-    thread_current()->basepriority = new_priority;
-  }
-  else if(new_priority > thread_current()->priority)
-  {
-    thread_current()->priority = new_priority;
-    thread_current()->basepriority = new_priority;
-  }
-  else
-    thread_current()->basepriority = new_priority;
-
-  if(!list_empty(&ready_list))
-  {
-    struct list_elem *front = list_front(&ready_list);
-    struct thread *fthread = list_entry (front, struct thread, elem);
-
-    if(fthread->priority > thread_current ()->priority)
-      thread_yield();
-  }
-  intr_set_level (old_level);
+  /* Old Implementation
+  thread_current ()->priority = new_priority; */
+  
+  /* My Implementation */
+  thread_set_priority_other (thread_current (), new_priority, true);
+  /* == My Implementation */
 }
+
+/* My Implementation
+ * if they are not the same value
+ */
+void
+thread_set_priority_other (struct thread *curr, int new_priority, bool forced)
+{
+  if (!curr->donated)
+    curr->priority = curr->base_priority = new_priority;
+  else if (forced)
+    {
+      if (curr->priority > new_priority)
+        curr->base_priority = new_priority;
+      else
+        curr->priority = new_priority;
+    }
+  else
+    curr->priority = new_priority;
+  
+  if (curr->status == THREAD_READY) /* Re-order the ready-list */
+    {
+      list_remove (&curr->elem);
+      list_insert_ordered (&ready_list, &curr->elem, thread_insert_less_tail, NULL);
+    }
+  else if (curr->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > new_priority)
+    thread_yield_head (curr);
+  /*
+  else if (curr->status == THREAD_BLOCKED && curr->blocked != NULL)
+    {
+      curr->blocked->holder->donated = true;
+      thread_set_priority_other (curr->blocked->holder, new_priority, forced);
+    } */
+}
+/* == My Implementation */
 
 /* Returns the current thread's priority. */
 int
@@ -504,12 +553,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
-  t->magic = THREAD_MAGIC;
-  t->basepriority = priority;
-  t->locker = NULL;
+  /* Old Implementation
+  t->priority = priority; */
+  /* My Implementation */
+  t->base_priority = t->priority = priority;
+  t->donated = false;
   t->blocked = NULL;
-  list_init (&t->pot_donors);
+  list_init (&t->locks);
+  /* == My Implementation */
+  t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -533,7 +585,7 @@ alloc_frame (struct thread *t, size_t size)
    idle_thread. */
 static struct thread *
 next_thread_to_run (void) 
-{
+{ 
   if (list_empty (&ready_list))
     return idle_thread;
   else
@@ -557,7 +609,7 @@ next_thread_to_run (void)
    After this function and its caller returns, the thread switch
    is complete. */
 void
-thread_schedule_tail (struct thread *prev)
+schedule_tail (struct thread *prev) 
 {
   struct thread *cur = running_thread ();
   
@@ -591,8 +643,8 @@ thread_schedule_tail (struct thread *prev)
    running to some other state.  This function finds another
    thread to run and switches to it.
 
-   It's not safe to call printf() until thread_schedule_tail()
-   has completed. */
+   It's not safe to call printf() until schedule_tail() has
+   completed. */
 static void
 schedule (void) 
 {
@@ -606,7 +658,7 @@ schedule (void)
 
   if (cur != next)
     prev = switch_threads (cur, next);
-  thread_schedule_tail (prev);
+  schedule_tail (prev);
 }
 
 /* Returns a tid to use for a new thread. */
@@ -622,25 +674,59 @@ allocate_tid (void)
 
   return tid;
 }
+
+/* My Implemenatation */
+
+/* Tell list_sort how to sort the ready list,
+ * We keep the thread who has outstanding priority at the head of the list
+ * And the sort is stable
+ */
+static bool
+thread_sort_less (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+{
+  struct thread *a, *b;
+  
+  ASSERT (lhs != NULL && rhs != NULL);
+  
+  a = list_entry (lhs, struct thread, elem);
+  b = list_entry (rhs, struct thread, elem);
+  
+  return (a->priority > b->priority);
+}
+
+/* put the threads who has outstanding priority to the head of the list */
+void
+sort_thread_list (struct list *l)
+{
+  if (list_empty (l))
+    return;
+
+  list_sort (l, thread_sort_less, NULL);
+}
+
+/* same as thread_sort_less but use > instead of >= */
+static bool
+thread_insert_less_head (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+{
+  struct thread *a, *b;
+  
+  ASSERT (lhs != NULL && rhs != NULL);
+  
+  a = list_entry (lhs, struct thread, elem);
+  b = list_entry (rhs, struct thread, elem);
+  
+  return (a->priority >= b->priority);
+}
+
+/* same as thread_sort_less */
+static bool
+thread_insert_less_tail (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+{
+  return thread_sort_less (lhs, rhs, NULL);
+}
+
+/* == My Implementation */
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
-
-bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux)
-{
-  struct thread *fthread = list_entry (first, struct thread, elem);
-  struct thread *sthread = list_entry (second, struct thread, elem);
-
-  return fthread->waketick < sthread->waketick;
-
-}
-
-bool cmp_priority(struct list_elem *first, struct list_elem *second, void *aux)
-{
-  struct thread *fthread = list_entry (first, struct thread, elem);
-  struct thread *sthread = list_entry (second, struct thread, elem);
-
-  return fthread->priority > sthread->priority;
-
-}

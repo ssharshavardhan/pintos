@@ -4,7 +4,10 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include <kernel/list.h>
+
+/* My Implementation */
+#include "threads/alarm.h"
+/* == My Implementation */
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -93,19 +96,15 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
-    struct list_elem donorelem;
-
-    int64_t waketick;
-
-    int basepriority;
-
-    struct thread *locker;
-
-    struct list pot_donors;
-
-    struct lock *blocked;
-
+    
+    /* My Implementation */
+    struct alarm alrm;                  /* alarm object */
+    int base_priority;                  /* priority before donate, if nobody donates, then it should be same as priority */
+    struct list locks;                  /* the list of locks that it holds */
+    bool donated;                       /* whether the thread has been donated priority */
+    struct lock *blocked;               /* by which lock this thread is blocked */
+    /* == My Implementation */
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -143,6 +142,12 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
+/* My Implementation */
+void sort_thread_list (struct list *l);
+void thread_set_priority_other (struct thread *curr, int new_priority, bool forced);
+void thread_yield_head (struct thread *curr);
+/* == My Implementation */
+
 int thread_get_priority (void);
 void thread_set_priority (int);
 
@@ -150,9 +155,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux);
-
-bool cmp_priority(struct list_elem *first, struct list_elem *second, void *aux);
 
 #endif /* threads/thread.h */
