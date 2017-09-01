@@ -184,6 +184,10 @@ thread_create (const char *name, int priority,
   enum intr_level old_level;
 
   ASSERT (function != NULL);
+  
+  /* My Implementation */
+  ASSERT (priority >= PRI_MIN && priority <= PRI_MAX);
+  /* == My Implementation */
 
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
@@ -390,7 +394,7 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority; */
   
   /* My Implementation */
-  thread_set_priority_other (thread_current (), new_priority);
+  thread_set_priority_other (thread_current (), new_priority, true);
   /* == My Implementation */
 }
 
@@ -398,10 +402,17 @@ thread_set_priority (int new_priority)
  * if they are not the same value
  */
 void
-thread_set_priority_other (struct thread *curr, int new_priority)
+thread_set_priority_other (struct thread *curr, int new_priority, bool forced)
 {
   if (!curr->donated)
     curr->priority = curr->base_priority = new_priority;
+  else if (forced)
+    {
+      if (curr->priority > new_priority)
+        curr->base_priority = new_priority;
+      else
+        curr->priority = new_priority;
+    }
   else
     curr->priority = new_priority;
   
@@ -410,10 +421,14 @@ thread_set_priority_other (struct thread *curr, int new_priority)
       list_remove (&curr->elem);
       list_insert_ordered (&ready_list, &curr->elem, thread_insert_less_tail, NULL);
     }
-  if (curr->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > new_priority)
+  else if (curr->status == THREAD_RUNNING && list_entry (list_begin (&ready_list), struct thread, elem)->priority > new_priority)
+    thread_yield_head (curr);
+  /*
+  else if (curr->status == THREAD_BLOCKED && curr->blocked != NULL)
     {
-      thread_yield_head (curr);
-    }
+      curr->blocked->holder->donated = true;
+      thread_set_priority_other (curr->blocked->holder, new_priority, forced);
+    } */
 }
 /* == My Implementation */
 
@@ -543,6 +558,7 @@ init_thread (struct thread *t, const char *name, int priority)
   /* My Implementation */
   t->base_priority = t->priority = priority;
   t->donated = false;
+  t->blocked = NULL;
   list_init (&t->locks);
   /* == My Implementation */
   t->magic = THREAD_MAGIC;
@@ -642,11 +658,7 @@ schedule (void)
 
   if (cur != next)
     prev = switch_threads (cur, next);
-  schedule_tail (prev); 
-  
-  /* My Implementation */
-  alarm_check ();
-  /* == My Implementation */
+  schedule_tail (prev);
 }
 
 /* Returns a tid to use for a new thread. */
@@ -679,7 +691,7 @@ thread_sort_less (const struct list_elem *lhs, const struct list_elem *rhs, void
   a = list_entry (lhs, struct thread, elem);
   b = list_entry (rhs, struct thread, elem);
   
-  return (a->priority >= b->priority);
+  return (a->priority > b->priority);
 }
 
 /* put the threads who has outstanding priority to the head of the list */
@@ -703,7 +715,7 @@ thread_insert_less_head (const struct list_elem *lhs, const struct list_elem *rh
   a = list_entry (lhs, struct thread, elem);
   b = list_entry (rhs, struct thread, elem);
   
-  return (a->priority > b->priority);
+  return (a->priority >= b->priority);
 }
 
 /* same as thread_sort_less */

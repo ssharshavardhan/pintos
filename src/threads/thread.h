@@ -102,6 +102,7 @@ struct thread
     int base_priority;                  /* priority before donate, if nobody donates, then it should be same as priority */
     struct list locks;                  /* the list of locks that it holds */
     bool donated;                       /* whether the thread has been donated priority */
+    struct lock *blocked;               /* by which lock this thread is blocked */
     /* == My Implementation */
     
 #ifdef USERPROG
@@ -143,7 +144,7 @@ void thread_foreach (thread_action_func *, void *);
 
 /* My Implementation */
 void sort_thread_list (struct list *l);
-void thread_set_priority_other (struct thread *curr, int new_priority);
+void thread_set_priority_other (struct thread *curr, int new_priority, bool forced);
 void thread_yield_head (struct thread *curr);
 /* == My Implementation */
 
