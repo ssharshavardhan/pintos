@@ -4,10 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-
-/* My Implementation */
 #include "threads/alarm.h"
-/* == My Implementation */
 
 /* States in a thread's life cycle. */
 enum thread_status
