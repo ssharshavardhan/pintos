@@ -1,7 +1,3 @@
-/* This file is fully designed and created by Christopher Xu
- * See README at root directory for details
- */
- 
 #include <list.h>
 #include <stdlib.h>
 #include <stdbool.h>
