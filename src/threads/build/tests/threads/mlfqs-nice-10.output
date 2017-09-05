@@ -1,0 +1,30 @@
+Writing command line to /tmp/AryHNq0klc.dsk...
+qemu -hda /tmp/AryHNq0klc.dsk -m 4 -net none -nographic -monitor null
+Kernel command line: -q -mlfqs run mlfqs-nice-10
+Pintos booting with 4,096 kB RAM...
+374 pages available in kernel pool.
+373 pages available in user pool.
+Calibrating timer...  78,540,800 loops/s.
+Boot complete.
+Executing 'mlfqs-nice-10':
+(mlfqs-nice-10) begin
+(mlfqs-nice-10) Starting 10 threads...
+(mlfqs-nice-10) Starting threads took 0 ticks.
+(mlfqs-nice-10) Sleeping 40 seconds to let threads run, please wait...
+(mlfqs-nice-10) Thread 0 received 300 ticks.
+(mlfqs-nice-10) Thread 1 received 301 ticks.
+(mlfqs-nice-10) Thread 2 received 301 ticks.
+(mlfqs-nice-10) Thread 3 received 300 ticks.
+(mlfqs-nice-10) Thread 4 received 300 ticks.
+(mlfqs-nice-10) Thread 5 received 301 ticks.
+(mlfqs-nice-10) Thread 6 received 301 ticks.
+(mlfqs-nice-10) Thread 7 received 300 ticks.
+(mlfqs-nice-10) Thread 8 received 300 ticks.
+(mlfqs-nice-10) Thread 9 received 300 ticks.
+(mlfqs-nice-10) end
+Execution of 'mlfqs-nice-10' complete.
+Timer: 4023 ticks
+Thread: 1000 idle ticks, 3023 kernel ticks, 0 user ticks
+Console: 1002 characters output
+Keyboard: 0 keys pressed
+Powering off...
