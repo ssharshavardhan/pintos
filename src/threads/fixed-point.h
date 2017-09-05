@@ -20,4 +20,3 @@
  
  
  #endif /* threads/fixed-point.h */
-View
