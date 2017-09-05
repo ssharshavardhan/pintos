@@ -27,7 +27,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-
+#define NICE_MAX 20
+#define NICE_DEFAULT 0
+#define NICE_MIN -20
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -103,6 +105,7 @@ struct thread
     struct list locks;                  /* the list of locks that it holds */
     bool donated;                       /* whether the thread has been donated priority */
     struct lock *blocked;               /* by which lock this thread is blocked */
+    int nice;
     /* == My Implementation */
     
 #ifdef USERPROG
@@ -147,7 +150,7 @@ void sort_thread_list (struct list *l);
 void thread_set_priority_other (struct thread *curr, int new_priority, bool forced);
 void thread_yield_head (struct thread *curr);
 /* == My Implementation */
-
+void thread_calculate_load_avg(void);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
