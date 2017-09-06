@@ -192,8 +192,15 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   /* My Implementation */
-  if (ticks % TIMER_FREQ == 0) /* do this every second */
-  	thread_calculate_load_avg ();
+  if (thread_mlfqs)  {
+    thread_current ()->recent_cpu += 100;
+    if (ticks % TIMER_FREQ == 0) {/* do this every second */
+  	 thread_calculate_load_avg ();
+     thread_calculate_recent_cpu_for_all();
+    }
+    if (ticks % 4 == 0)
+ +    thread_calculate_priority_for_all ();
+  }
   alarm_check ();
   /* == My Implementation */
 }
