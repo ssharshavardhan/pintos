@@ -199,7 +199,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
      thread_calculate_recent_cpu_for_all();
     }
     if (ticks % 4 == 0)
- +    thread_calculate_priority_for_all ();
+    	thread_calculate_priority_for_all ();
   }
   alarm_check ();
   /* == My Implementation */

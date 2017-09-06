@@ -17,6 +17,4 @@
 #define CONVERT_TO_INT_NEAR(x) ((x) >= 0 ? ((x) + (FRACTION) / 2) / (FRACTION) : ((x) - (FRACTION) / 2) / (FRACTION))
 #define FP_MUL(x, y) ((int64_t)(x)) * (y) / (FRACTION)
 #define FP_DIV(x, y) ((int64_t)(x)) * (FRACTION) / (y)
-
-
 #endif /* threads/fixed-point.h */
