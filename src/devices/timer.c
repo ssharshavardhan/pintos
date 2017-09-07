@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 /* My Implementation */
+#include "threads/fixed-point.h"
 #include "threads/alarm.h"
 /* == My Implementation */
   
@@ -193,7 +194,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   
   /* My Implementation */
   if (thread_mlfqs)  {
-    thread_current ()->recent_cpu += 100;
+    thread_current ()->recent_cpu = CONVERT_TO_INT_NEAR (INT_ADD (CONVERT_TO_FP (thread_current ()->recent_cpu), 100));
     if (ticks % TIMER_FREQ == 0) {/* do this every second */
   	 thread_calculate_load_avg ();
      thread_calculate_recent_cpu_for_all();
