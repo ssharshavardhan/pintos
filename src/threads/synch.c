@@ -210,7 +210,7 @@ lock_acquire (struct lock *lock)
   
   old_level = intr_disable ();
   
-  while (thrd != NULL && thrd->priority < curr->priority)
+  while (!thread_mlfqs && thrd != NULL && thrd->priority < curr->priority)
     {
       thrd->donated = true;
       thread_set_priority_other (thrd, curr->priority, false);
@@ -233,9 +233,10 @@ lock_acquire (struct lock *lock)
   
   /* My Implementation */
   lock->holder = curr;
-  curr->blocked = NULL;
-  list_insert_ordered (&lock->holder->locks, &lock->holder_elem, outstanding_priority, NULL);
-  
+  if (!thread_mlfqs) {
+  	curr->blocked = NULL;
+  	list_insert_ordered (&lock->holder->locks, &lock->holder_elem, outstanding_priority, NULL);
+  }
   intr_set_level (old_level);
   /* == My Implementation */
   
@@ -283,8 +284,8 @@ lock_release (struct lock *lock)
   enum intr_level old_level;
   
   curr = thread_current ();
-  
-  ASSERT (curr->blocked == NULL);
+  if (!thread_mlfqs)
+  	ASSERT (curr->blocked == NULL);
   /* == My Implementation */
   
   ASSERT (lock != NULL);
@@ -296,15 +297,14 @@ lock_release (struct lock *lock)
   sema_up (&lock->semaphore);
   
   /* My Implementation */
-  list_remove (&lock->holder_elem);
-  lock->lock_priority = PRI_MIN - 1;
-  if (list_empty (&curr->locks))
-    {
-      curr->donated = false;
-      thread_set_priority (curr->base_priority);
+  if (!thread_mlfqs) {
+  	list_remove (&lock->holder_elem);
+  	lock->lock_priority = PRI_MIN - 1;
+  	if (list_empty (&curr->locks)) {
+      	curr->donated = false;
+      	thread_set_priority (curr->base_priority);
     }
-  else /* Still holding locks */
-    {
+  	else /* Still holding locks */ {
       l = list_back (&curr->locks); //, outstanding_priority, NULL);
       another = list_entry (l, struct lock, holder_elem);
       if (another->lock_priority != PRI_MIN - 1)
@@ -312,6 +312,7 @@ lock_release (struct lock *lock)
       else
         thread_set_priority (curr->base_priority);
     }
+   }
     
   intr_set_level (old_level);
   /* == My Implementation */
