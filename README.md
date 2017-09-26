@@ -1,4 +1,1 @@
-# pintos-assignments
-changethereadmeabit
-#Assignment 0 
-To understand working of program's runtime stack, Familiarity with debugging
+Pintos is a simple operating system framework for the 80x86 architecture. It supports kernel threads, loading and running user programs, and a file system, but it implements all of these in a very simple way. In the Pintos projects, my team will strengthen its support in all of these areas
