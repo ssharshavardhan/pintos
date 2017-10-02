@@ -7,6 +7,7 @@
 
 /* My Implementation */
 #include "threads/alarm.h"
+#include "threads/synch.h"
 /* == My Implementation */
 
 /* States in a thread's life cycle. */
@@ -112,6 +113,8 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct semaphore wait;              /* semaphore for process_wait */
+    int ret_status;   
 #endif
 
     /* Owned by thread.c. */
@@ -156,6 +159,7 @@ void thread_calculate_recent_cpu (void);
 void thread_calculate_priority (void);
 void thread_calculate_recent_cpu_for_all (void);
 void thread_calculate_priority_for_all (void);
+struct thread *get_thread_by_tid (tid_t);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
