@@ -1,4 +1,4 @@
-#include "./functions.h"
+#include <functions.h>
 
 
 void test_stack(int argc,char * argv[],char** env)
