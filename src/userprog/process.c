@@ -78,6 +78,9 @@ start_process (void *file_name_)
             palloc_free_page(argv_off);
             thread_exit ();
       }
+      while (*(save_ptr) == ' ') {
+              ++save_ptr;
+      }
       argv_off[++argc] = save_ptr - file_name;
    }
    /* == My Implementation */
