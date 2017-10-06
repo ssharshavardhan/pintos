@@ -234,6 +234,7 @@ thread_create (const char *name, int priority,
     thread_yield_head (thread_current ()); 
   #ifdef USERPROG
     sema_init (&t->wait, 0);
+    t->ret_status = RET_STATUS_DEFAULT;
   #endif
  /* == My Implementation */
   return tid;
