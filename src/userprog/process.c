@@ -47,10 +47,10 @@ process_execute (const char *file_name)
   t = get_thread_by_tid (tid);
   sema_down (&t->wait);
   if (t->ret_status == -1)
-      tid = TID_ERROR;
+    tid = TID_ERROR;
   thread_unblock (t);
   if (t->ret_status == -1)
-      process_wait (t->tid);
+    process_wait (t->tid);
   palloc_free_page (fn);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -156,7 +156,6 @@ start_process (void *file_name_)
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
    immediately, without waiting.
-
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
@@ -459,15 +458,11 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
 /* Loads a segment starting at offset OFS in FILE at address
    UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
    memory are initialized, as follows:
-
         - READ_BYTES bytes at UPAGE must be read from FILE
           starting at offset OFS.
-
         - ZERO_BYTES bytes at UPAGE + READ_BYTES must be zeroed.
-
    The pages initialized by this function must be writable by the
    user process if WRITABLE is true, read-only otherwise.
-
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
 static bool
