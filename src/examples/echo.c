@@ -7,9 +7,7 @@ main (int argc, char **argv)
   int i;
   printf("ARGC:%d  ARGV:%x\n", argc, (unsigned int)argv);
   for (i = 0; i < argc; i++)
-      printf("Argv[%d] = %x pointing at %s \n", i, (unsigned int)argv[i], argv[i]);
-  //for (i = 0; i < argc; i++)
-  //  printf ("%s ", argv[i]);
+    printf ("%s ", argv[i]);
   printf ("\n");
 
   return EXIT_SUCCESS;

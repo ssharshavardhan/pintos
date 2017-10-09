@@ -1,0 +1,19 @@
+Copying tests/userprog/create-bound to scratch partition...
+Writing command line to /tmp/Yhia8ytAiQ.dsk...
+qemu -hda /tmp/Yhia8ytAiQ.dsk -hdb /tmp/FCkTvKRPCh.dsk -hdc /tmp/kJrPAaFvmZ.dsk -m 4 -net none -nographic -monitor null
+Kernel command line: -q -f extract run create-bound
+Pintos booting with 4,096 kB RAM...
+373 pages available in kernel pool.
+373 pages available in user pool.
+Calibrating timer...  157,081,600 loops/s.
+hd0:0: detected 145 sector (72 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 4,032 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 99 sector (49 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+Formatting file system...done.
+Boot complete.
+Extracting ustar archive from scratch disk into file system...
+Putting 'create-bound' into the file system...
+Erasing ustar archive...
+Executing 'create-bound':
+
+TIMEOUT after 61 seconds of wall-clock time - load average: 0.12, 0.16, 0.23
