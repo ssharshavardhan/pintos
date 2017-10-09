@@ -46,6 +46,12 @@ process_execute (const char *file_name)
   tid = thread_create (fn, PRI_DEFAULT, start_process, fn_copy);
   t = get_thread_by_tid (tid);
   sema_down (&t->wait);
+  if (t->ret_status == -1)
+      tid = TID_ERROR;
+  thread_unblock (t);
+  if (t->ret_status == -1)
+      process_wait (t->tid);
+  palloc_free_page (fn);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
