@@ -235,6 +235,8 @@ thread_create (const char *name, int priority,
   #ifdef USERPROG
     sema_init (&t->wait, 0);
     t->ret_status = RET_STATUS_DEFAULT;
+    // UP03
+    list_init(&t->files);
   #endif
  /* == My Implementation */
   return tid;

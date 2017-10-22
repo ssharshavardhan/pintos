@@ -116,8 +116,14 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    
+    /* My Implementation */
     struct semaphore wait;              /* semaphore for process_wait */
-    int ret_status;   
+    int ret_status;  
+    //UP03
+    struct list files; /* List of the files opened by this thread */ 
+    /* == My Implementation */
+
 #endif
 
     /* Owned by thread.c. */
