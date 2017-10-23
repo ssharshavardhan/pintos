@@ -181,3 +181,68 @@ T01 - 89b0488f9f8
 First Commit - b16d8de34
 
 
+
+
+#UP03 - System calls for file operations
+1. First handle files in the various syscalls mentioned at https://jeason.gitbooks.io/pintos-reference-guide-sysu/content/userprog-systemcall.html
+syscall-nr.h contains all sys call numbers
+
+Note : We'll later have to revise this defn -
+The 128 entries limit, per-process open file table - struct list files;
+
+After completion of UP03, for UP04 we are left with only -
+exec() , wait() and Denying Writes to Executables.
+
+
+
+Robustness file ->
+
+Robustness of system calls:
+- Test robustness of file descriptor handling.
+2	close-stdin
+2	close-stdout
+2	close-bad-fd
+2	close-twice
+2	read-bad-fd
+2	read-stdout
+2	write-bad-fd
+2	write-stdin
+2	multi-child-fd
+
+- Test robustness of pointer handling.
+3	create-bad-ptr
+3	exec-bad-ptr
+3	open-bad-ptr
+3	read-bad-ptr
+3	write-bad-ptr
+
+- Test robustness of buffer copying across page boundaries.
+3	create-bound
+3	open-boundary
+3	read-boundary
+3	write-boundary
+
+- Test handling of null pointer and empty strings.
+2	create-null
+2	open-null
+2	open-empty
+
+- Test robustness of system call implementation.
+3	sc-bad-arg
+3	sc-bad-sp
+5	sc-boundary
+5	sc-boundary-2
+
+- Test robustness of "exec" and "wait" system calls.
+5	exec-missing
+5	wait-bad-pid
+5	wait-killed
+
+- Test robustness of exception handling.
+1	bad-read
+1	bad-write
+1	bad-jump
+1	bad-read2
+1	bad-write2
+1	bad-jump2
+
