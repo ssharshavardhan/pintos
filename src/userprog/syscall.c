@@ -12,16 +12,21 @@
 #include "filesys/file.h" // file handling functions
 #include "filesys/filesys.h" // init/create/done
 #include "threads/palloc.h"
+// UP03 +
+#include "devices/input.h" // contains getchar and putchar eqv functions
+
  /* == My Implementation */
 
 
 static void syscall_handler (struct intr_frame *);
 
 /* My Implementation */
+
 //static void sys_write (int *ret,int fd, const void *buffer, unsigned length);
 //static void sys_exit (int *ret, int status);
 //typedef void (*handler) (int *,uint32_t, uint32_t, uint32_t);
 typedef int pid_t;
+
 static int sys_write (int fd, const void *buffer, unsigned length);
 static int sys_exit (int status);
 static int sys_halt (void);
@@ -36,6 +41,10 @@ static int sys_wait (pid_t pid);
 static struct file *find_file_by_fd (int fd);
 static struct fd_elem *find_fd_elem_by_fd (int fd);
 static int alloc_fid (void);
+// UP03 +
+static int sys_filesize (int fd);
+static int sys_tell (int fd);
+static int sys_seek (int fd, unsigned pos);
 
 typedef int (*handler) (uint32_t, uint32_t, uint32_t);
 static handler syscall_vec[128];
@@ -59,16 +68,20 @@ void syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
    
   /* My Implementation */
-  syscall_vec[SYS_WRITE] = (handler)sys_write;
-  syscall_vec[SYS_EXIT] = (handler)sys_exit;
-  syscall_vec[SYS_HALT] = (handler)sys_halt;
+  // All the syscall numbers obtained from syscall-nr.h
   syscall_vec[SYS_CREATE] = (handler)sys_create;
-  syscall_vec[SYS_OPEN] = (handler)sys_open;
   syscall_vec[SYS_CLOSE] = (handler)sys_close;
-  syscall_vec[SYS_READ] = (handler)sys_read;
-  syscall_vec[SYS_WRITE] = (handler)sys_write;
+  syscall_vec[SYS_EXIT] = (handler)sys_exit;
   syscall_vec[SYS_EXEC] = (handler)sys_exec;
+  syscall_vec[SYS_HALT] = (handler)sys_halt;
+  syscall_vec[SYS_OPEN] = (handler)sys_open;
+  syscall_vec[SYS_READ] = (handler)sys_read;
   syscall_vec[SYS_WAIT] = (handler)sys_wait;
+  syscall_vec[SYS_WRITE] = (handler)sys_write;
+// UP03 + 
+  // syscall_vec[SYS_FILESIZE] = (handler)sys_filesize;
+  // syscall_vec[SYS_SEEK] = (handler)sys_seek;
+  // syscall_vec[SYS_TELL] = (handler)sys_tell;
 
   list_init (&file_list);
    /* == My Implementation */
@@ -87,9 +100,11 @@ static void syscall_handler (struct intr_frame *f )
     h = syscall_vec[*p];
     if (!(is_user_vaddr (p + 1) && is_user_vaddr (p + 2) && is_user_vaddr (p + 3)))
         goto terminate; 
+    // Makes a call to the function at frame's stack pointer
     ret = h (*(p + 1), *(p + 2), *(p + 3));
     f->eax = ret;  
     return;  
+    
     terminate:
     sys_exit (-1);
     }
@@ -98,10 +113,15 @@ static int sys_write (int fd, const void *buffer, unsigned length)
 {
     // if (fd == 1)
   /* My Implementation */
+// UP03 -
     if (fd == STDOUT_FILENO) //stdout
         putbuf (buffer, length);
     else if(fd == STDIN_FILENO) //stdin
         return -1;
+// UP03 + 
+    else if (!is_user_vaddr (buffer))
+      sys_exit (-1);
+// UP03 -
     else{
       struct file *f;
       f = find_file_by_fd(fd);
@@ -145,7 +165,12 @@ sys_halt (void)
 static int
 sys_create (const char *file, unsigned initial_size)
 {
-  return -1;
+  // return -1;
+  /*  My Implementation */
+  if (!file)
+    return sys_exit (-1);
+  return filesys_create (file, initial_size);
+  /* == My Implementation */
 }
 
 static int
@@ -209,9 +234,37 @@ sys_close(int fd)
 static int
 sys_read (int fd, void *buffer, unsigned size)
 {
-  return -1;
-}
+  // return -1;
+  /*
+Reads size bytes from the file open as fd into buffer.
+Returns the number of bytes actually read (0 at end of file), 
+or -1 if the file could not be read (due to a condition other than end of file).
+Fd 0 reads from the keyboard using input_getc().
 
+  */
+  /* My Implementation */
+  struct file * f;
+  unsigned i;
+  
+  if (fd == STDIN_FILENO) /* stdin */
+    {
+      for (i = 0; i != size; ++i)
+        *(uint8_t *)(buffer + i) = input_getc ();
+      return size;
+    }
+  else if (fd == STDOUT_FILENO) /* stdout */
+    return -1;
+  else if (!is_user_vaddr (buffer)) /* bad ptr */
+    sys_exit (-1);
+  else
+    {
+      f = find_file_by_fd (fd);
+      if (!f)
+        return -1;
+      return file_read (f, buffer, size);
+    }
+  /* == My Implementation */
+}
 static int
 sys_exec (const char * cmd)
 {
@@ -267,4 +320,40 @@ alloc_fid (void)
 {
   static int fid = 2; //initialize to 2
   return fid++;
+}
+
+
+static int
+sys_filesize (
+int fd)
+{
+  struct file *f;
+  
+  f = find_file_by_fd (fd);
+  if (!f)
+    return -1;
+  return file_length (f);
+}
+
+static int
+sys_tell (int fd)
+{
+  struct file *f;
+  
+  f = find_file_by_fd (fd);
+  if (!f)
+    return -1;
+  return file_tell (f);
+}
+
+static int
+sys_seek (int fd, unsigned pos)
+{
+  struct file *f;
+  
+  f = find_file_by_fd (fd);
+  if (!f)
+    return -1;
+  file_seek (f, pos);
+  return 0; /* Not used */
 }
