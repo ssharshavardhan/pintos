@@ -79,9 +79,9 @@ void syscall_init (void)
   syscall_vec[SYS_WAIT] = (handler)sys_wait;
   syscall_vec[SYS_WRITE] = (handler)sys_write;
 // UP03 + 
-  // syscall_vec[SYS_FILESIZE] = (handler)sys_filesize;
-  // syscall_vec[SYS_SEEK] = (handler)sys_seek;
-  // syscall_vec[SYS_TELL] = (handler)sys_tell;
+  syscall_vec[SYS_FILESIZE] = (handler)sys_filesize;
+  syscall_vec[SYS_SEEK] = (handler)sys_seek;
+  syscall_vec[SYS_TELL] = (handler)sys_tell;
 
   list_init (&file_list);
    /* == My Implementation */

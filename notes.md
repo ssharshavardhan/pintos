@@ -181,7 +181,8 @@ T01 - 89b0488f9f8
 First Commit - b16d8de34
 
 
-
+#UP02 - 
+process_wait & process_execute
 
 #UP03 - System calls for file operations
 1. First handle files in the various syscalls mentioned at https://jeason.gitbooks.io/pintos-reference-guide-sysu/content/userprog-systemcall.html
