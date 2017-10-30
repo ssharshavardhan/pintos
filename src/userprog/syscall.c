@@ -14,7 +14,7 @@
 #include "threads/palloc.h"
 // UP03 +
 #include "devices/input.h" // contains getchar and putchar eqv functions
-
+#include "threads/synch.h"
  /* == My Implementation */
 
 
@@ -42,6 +42,8 @@ static int sys_remove (const char *file);
 static struct file *find_file_by_fd (int fd);
 static struct fd_elem *find_fd_elem_by_fd (int fd);
 static int alloc_fid (void);
+static struct fd_elem *find_fd_elem_by_fd_in_process (int fd);
+static struct file *find_file_by_fd_in_process (int fd);
 // UP03 +
 static int sys_filesize (int fd);
 static int sys_tell (int fd);
@@ -49,7 +51,7 @@ static int sys_seek (int fd, unsigned pos);
 
 typedef int (*handler) (uint32_t, uint32_t, uint32_t);
 static handler syscall_vec[128];
-
+static struct lock file_lock;
 // UP03 - 
 struct fd_elem
   {
@@ -86,6 +88,7 @@ void syscall_init (void)
   syscall_vec[SYS_REMOVE] = (handler)sys_remove;
 
   list_init (&file_list);
+  lock_init(&file_lock);
    /* == My Implementation */
 }
 
@@ -368,3 +371,30 @@ sys_seek (int fd, unsigned pos)
   file_seek (f, pos);
   return 0; /* Not used */
 }
+
+static struct fd_elem *
+ find_fd_elem_by_fd_in_process (int fd)
+ {
+   struct fd_elem *ret;
+   struct list_elem *l;
+   struct thread *t;
+   t = thread_current ();
+   for (l = list_begin (&t->files); l != list_end (&t->files); l = list_next (l))
+     {
+       ret = list_entry (l, struct fd_elem, elem);
+       if (ret->fd == fd)
+         return ret;
+     }
+     
+   return NULL;
+ }
+ 
+ static struct file *
+ find_file_by_fd_in_process (int fd)
+ {
+   struct fd_elem *ret; 
+   ret = find_fd_elem_by_fd_in_process (fd);
+   if (!ret)
+     return NULL;
+   return ret->file;
+ }
