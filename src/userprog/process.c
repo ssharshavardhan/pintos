@@ -103,6 +103,8 @@ start_process (void *file_name_)
    /* My Implementation */
    /* Setting up stack */
    if(success){
+    t->self = filesys_open (file_name);
+    file_deny_write (t->self);
     if_.esp -= file_name_len + 1;
     start = if_.esp;
     memcpy (if_.esp, file_name, file_name_len + 1);
@@ -167,7 +169,11 @@ process_wait (tid_t child_tid )
     t = get_thread_by_tid (child_tid);
     if (!t || t->status == THREAD_DYING || t->ret_status != RET_STATUS_DEFAULT)
        return -1;
-    sema_down (&t->wait);
+    //sema_down (&t->wait);
+    t->parent = thread_current ();
+    intr_disable ();
+    thread_block ();
+    intr_enable ();
     ret = t->ret_status;
     printf ("%s: exit(%d)\n", t->name, t->ret_status);
     thread_unblock(t);
@@ -182,12 +188,15 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
   /* My Implementation */
-  
-  sema_up (&cur->wait);
+  //sema_up (&cur->wait);
+  if(cur->parent)
+    thread_unblock(cur->parent);
+  cur->parent =NULL;
+  file_close(cur->self);
   intr_disable ();
   thread_block ();
+  intr_enable();
   /* == My Implementation */
-
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
