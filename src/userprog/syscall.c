@@ -119,22 +119,33 @@ static int sys_write (int fd, const void *buffer, unsigned length)
     // if (fd == 1)
   /* My Implementation */
 // UP03 -
+    struct file *f;
+    int ret;
+    lock_acquire(&file_lock);
     if (fd == STDOUT_FILENO) //stdout
         putbuf (buffer, length);
     else if(fd == STDIN_FILENO) //stdin
-        return -1;
-// UP03 + 
-    else if (!is_user_vaddr (buffer))
-      sys_exit (-1);
+        {
+          ret = -1;
+          goto done;
+        }
+    else if (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + length))
+     {
+       lock_release (&file_lock);
+       sys_exit (-1);
+     }
 // UP03 -
-    else{
-      struct file *f;
+    else{     
       f = find_file_by_fd(fd);
       if(!f)
-        return -1;
-      return file_write(f,buffer,length);
+        {
+          ret = -1;
+          goto done;
+        }
+        ret = file_write(f,buffer,length);
     }
-
+done: 
+    lock_release(&file_lock);
     return length;
    /* == My Implementation */
 }
@@ -186,41 +197,43 @@ sys_open (const char *file)
 
   struct file *f;
   struct fd_elem *fde;
-  
+  int ret=-1;
   if (!file) /* file == NULL */
     return -1;
-  
+  lock_acquire(&file_lock);
   f = filesys_open (file);
   if (!f) /* Bad file name */
-    return -1;
+    goto done;
     
   fde = (struct fd_elem *)palloc_get_page (0);
   if (!fde) /* Not enough memory */
     {
       file_close (f);
-      return -1;
+      goto done;
     }
     
   fde->file = f;
   fde->fd = alloc_fid ();
   list_push_back (&file_list, &fde->elem);
   list_push_back (&thread_current ()->files, &fde->thread_elem);
-  return fde->fd;
+  ret = fde->fd;
+done:
+  lock_release(&file_lock);
+  return ret;
   /* == My Implementation */
-  
-  // return -1;
 }
 
 static int
 sys_close(int fd)
 {
   /*  My Implementation */
-   struct fd_elem *f;
-  
+  struct fd_elem *f;
+  int ret = -1;
+  lock_acquire(&file_lock);
   f = find_fd_elem_by_fd (fd);
   
   if (!f) /* Bad fd */
-    return -1;
+    goto done;
   // free memory used by f's file
   file_close (f->file);
 
@@ -230,10 +243,11 @@ sys_close(int fd)
   
   // free memory used by fd_elem
   palloc_free_page (f);
-  return 0;
+  ret = 0;
+done:
+  lock_release(&file_lock);
+  return ret;
   /* == My Implementation */
-  
-  // return -1;
 }
 
 static int
@@ -250,7 +264,8 @@ Fd 0 reads from the keyboard using input_getc().
   /* My Implementation */
   struct file * f;
   unsigned i;
-  
+  int ret = -1;
+  lock_acquire(&file_lock);
   if (fd == STDIN_FILENO) /* stdin */
     {
       for (i = 0; i != size; ++i)
@@ -258,17 +273,17 @@ Fd 0 reads from the keyboard using input_getc().
       return size;
     }
   else if (fd == STDOUT_FILENO) /* stdout */
-    return -1;
+    goto done;
   else if (!is_user_vaddr (buffer)) /* bad ptr */
     sys_exit (-1);
   else
     {
       f = find_file_by_fd (fd);
       if (!f)
-        return -1;
+        goto done;
       return file_read (f, buffer, size);
     }
-    return -1; //shouldn't reach here
+    ret = file_read(f,buffer,size);
   /* == My Implementation */
 }
 static int
