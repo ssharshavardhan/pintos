@@ -186,13 +186,14 @@ process_wait & process_execute
 
 #UP03 - System calls for file operations
 1. First handle files in the various syscalls mentioned at https://jeason.gitbooks.io/pintos-reference-guide-sysu/content/userprog-systemcall.html
-syscall-nr.h contains all sys call numbers
+syscall-nr.h contains all sys call numbers in an enum
 
 Note : We'll later have to revise this defn -
 The 128 entries limit, per-process open file table - struct list files;
 
-After completion of UP03, for UP04 we are left with only -
-exec() , wait() and Denying Writes to Executables.
+#UP 04 -  Exec(), Wait() and Denying Writes to Executables
+
+
 
 
 
@@ -247,3 +248,7 @@ Robustness of system calls:
 1	bad-write2
 1	bad-jump2
 
+
+For each of the exercise we have-
+Commit ID
+List of Functions changed and their roles
