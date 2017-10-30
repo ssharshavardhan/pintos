@@ -283,7 +283,9 @@ Fd 0 reads from the keyboard using input_getc().
         goto done;
       return file_read (f, buffer, size);
     }
-    ret = file_read(f,buffer,size);
+  done:    
+    lock_release (&file_lock);
+    return ret;  
   /* == My Implementation */
 }
 static int
