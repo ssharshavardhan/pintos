@@ -291,9 +291,13 @@ Fd 0 reads from the keyboard using input_getc().
 static int
 sys_exec (const char * cmd)
 {
-  if (!cmd)
-    return -1;
-  return process_execute (cmd);
+    int ret;
+    if (!cmd || !is_user_vaddr (cmd)) /* bad ptr */
+      return -1;
+    lock_acquire (&file_lock);
+    ret = process_execute (cmd);
+    lock_release (&file_lock);
+    return ret;
 }
 
 static int

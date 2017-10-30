@@ -123,6 +123,7 @@ struct thread
     //UP03
     struct list files; /* List of the files opened by this thread */ 
     struct file *self;
+    struct thread *parent;
     /* == My Implementation */
 
 #endif

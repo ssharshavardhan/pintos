@@ -237,6 +237,7 @@ thread_create (const char *name, int priority,
     t->ret_status = RET_STATUS_DEFAULT;
     // UP03
     list_init(&t->files);
+    t->parent = NULL;
   #endif
  /* == My Implementation */
   return tid;
