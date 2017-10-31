@@ -52,7 +52,9 @@ struct fd_elem
     struct list_elem thread_elem;
   };
   
+// The list of open files
 static struct list file_list;
+
 
 /* == My Implementation */
 
@@ -200,6 +202,7 @@ sys_open (const char *file)
     return -1;
   if (!is_user_vaddr (file))
     sys_exit (-1);
+
   f = filesys_open (file);
   if (!f) /* Bad file name */
     goto done;
@@ -213,6 +216,7 @@ sys_open (const char *file)
     
   fde->file = f;
   fde->fd = alloc_fid ();
+
   list_push_back (&file_list, &fde->elem);
   list_push_back (&thread_current ()->files, &fde->thread_elem);
   ret = fde->fd;
