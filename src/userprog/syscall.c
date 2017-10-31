@@ -3,56 +3,47 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
- /* My Implementation */
+/* My Implementation */
 #include "threads/vaddr.h"
 #include "threads/init.h"
 #include "userprog/process.h"
-// UP03 - 
 #include <list.h>
-#include "filesys/file.h" // file handling functions
-#include "filesys/filesys.h" // init/create/done
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/palloc.h"
-// UP03 +
-#include "devices/input.h" // contains getchar and putchar eqv functions
+#include "threads/malloc.h"
+#include "devices/input.h"
 #include "threads/synch.h"
- /* == My Implementation */
-
+/* == My Implementation */
 
 static void syscall_handler (struct intr_frame *);
 
 /* My Implementation */
 
-//static void sys_write (int *ret,int fd, const void *buffer, unsigned length);
-//static void sys_exit (int *ret, int status);
-//typedef void (*handler) (int *,uint32_t, uint32_t, uint32_t);
 typedef int pid_t;
 
 static int sys_write (int fd, const void *buffer, unsigned length);
-static int sys_exit (int status);
 static int sys_halt (void);
 static int sys_create (const char *file, unsigned initial_size);
 static int sys_open (const char *file);
 static int sys_close (int fd);
 static int sys_read (int fd, void *buffer, unsigned size);
-static int sys_exec (const char * cmd);
+static int sys_exec (const char *cmd);
 static int sys_wait (pid_t pid);
+static int sys_filesize (int fd);
+static int sys_tell (int fd);
+static int sys_seek (int fd, unsigned pos);
 static int sys_remove (const char *file);
 
-// UP03 - 
 static struct file *find_file_by_fd (int fd);
 static struct fd_elem *find_fd_elem_by_fd (int fd);
 static int alloc_fid (void);
 static struct fd_elem *find_fd_elem_by_fd_in_process (int fd);
-static struct file *find_file_by_fd_in_process (int fd);
-// UP03 +
-static int sys_filesize (int fd);
-static int sys_tell (int fd);
-static int sys_seek (int fd, unsigned pos);
 
 typedef int (*handler) (uint32_t, uint32_t, uint32_t);
 static handler syscall_vec[128];
 static struct lock file_lock;
-// UP03 - 
+
 struct fd_elem
   {
     int fd;
@@ -63,111 +54,121 @@ struct fd_elem
   
 static struct list file_list;
 
-
 /* == My Implementation */
 
-void syscall_init (void)
+void
+syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-   
+  
   /* My Implementation */
-  // All the syscall numbers obtained from syscall-nr.h
-  syscall_vec[SYS_CREATE] = (handler)sys_create;
-  syscall_vec[SYS_CLOSE] = (handler)sys_close;
+
   syscall_vec[SYS_EXIT] = (handler)sys_exit;
-  syscall_vec[SYS_EXEC] = (handler)sys_exec;
   syscall_vec[SYS_HALT] = (handler)sys_halt;
+  syscall_vec[SYS_CREATE] = (handler)sys_create;
   syscall_vec[SYS_OPEN] = (handler)sys_open;
+  syscall_vec[SYS_CLOSE] = (handler)sys_close;
   syscall_vec[SYS_READ] = (handler)sys_read;
-  syscall_vec[SYS_WAIT] = (handler)sys_wait;
   syscall_vec[SYS_WRITE] = (handler)sys_write;
-// UP03 + 
+  syscall_vec[SYS_EXEC] = (handler)sys_exec;
+  syscall_vec[SYS_WAIT] = (handler)sys_wait;
   syscall_vec[SYS_FILESIZE] = (handler)sys_filesize;
   syscall_vec[SYS_SEEK] = (handler)sys_seek;
   syscall_vec[SYS_TELL] = (handler)sys_tell;
   syscall_vec[SYS_REMOVE] = (handler)sys_remove;
-
+  
   list_init (&file_list);
-  lock_init(&file_lock);
-   /* == My Implementation */
+  lock_init (&file_lock);
+  /* == My Implementation */
 }
 
-static void syscall_handler (struct intr_frame *f )
+static void
+syscall_handler (struct intr_frame *f /* Old Implementation UNUSED */) 
 {
-    handler h;
-    int *p;
-    int ret;
-    p = f->esp;
-    if (!is_user_vaddr (p))
-        goto terminate;  
-    if (*p < SYS_HALT || *p > SYS_INUMBER)
-        goto terminate;
-    h = syscall_vec[*p];
-    if (!(is_user_vaddr (p + 1) && is_user_vaddr (p + 2) && is_user_vaddr (p + 3)))
-        goto terminate; 
-    // Makes a call to the function at frame's stack pointer
-    ret = h (*(p + 1), *(p + 2), *(p + 3));
-    f->eax = ret;  
-    return;  
+  /* Old Implementation 
+  printf ("system call!\n");
+  thread_exit (); */
+  /* My Implementation */
+  handler h;
+  int *p;
+  int ret;
+  
+  p = f->esp;
+  
+  if (!is_user_vaddr (p))
+    goto terminate;
+  
+  if (*p < SYS_HALT || *p > SYS_INUMBER)
+    goto terminate;
+  
+  h = syscall_vec[*p];
+  
+  if (!(is_user_vaddr (p + 1) && is_user_vaddr (p + 2) && is_user_vaddr (p + 3)))
+    goto terminate;
+
+   // Makes a call to the function at frame's stack pointer
+  ret = h (*(p + 1), *(p + 2), *(p + 3));
+  
+  f->eax = ret;
+  
+  return;
+  
+terminate:
+  sys_exit (-1);
+  /* == My Implementation */
+}
+
+static int
+sys_write (int fd, const void *buffer, unsigned length)
+{
+// if (fd == 1)
+ /* My Implementation */
+// UP03 -
+
+  struct file * f;
+  int ret;
+  
+  ret = -1;
+  lock_acquire (&file_lock);
+  if (fd == STDOUT_FILENO) /* stdout */
+    putbuf (buffer, length);
+  else if (fd == STDIN_FILENO) /* stdin */
+   goto done;
+  else if (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + length))
+    {
+      lock_release (&file_lock);
+      sys_exit (-1);
+    }
+// UP03 -
+  else
+    {
+      f = find_file_by_fd (fd);
+      if (!f)
+        goto done;
+        
+      ret = file_write (f, buffer, length);
+    }
     
-    terminate:
-    sys_exit (-1);
-    }
-
-static int sys_write (int fd, const void *buffer, unsigned length)
-{
-    // if (fd == 1)
-  /* My Implementation */
-// UP03 -
-    struct file *f;
-    int ret;
-    lock_acquire(&file_lock);
-    if (fd == STDOUT_FILENO) //stdout
-        putbuf (buffer, length);
-    else if(fd == STDIN_FILENO) //stdin
-        {
-          ret = -1;
-          goto done;
-        }
-    else if (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + length))
-     {
-       lock_release (&file_lock);
-       sys_exit (-1);
-     }
-// UP03 -
-    else{     
-      f = find_file_by_fd(fd);
-      if(!f)
-        {
-          ret = -1;
-          goto done;
-        }
-        ret = file_write(f,buffer,length);
-    }
-done: 
-    lock_release(&file_lock);
-    return length;
-   /* == My Implementation */
+done:
+  lock_release (&file_lock);
+  return ret;
 }
 
-static int sys_exit (int status)
+int
+sys_exit (int status)
 {
-  /* My Implementation */
+  /* Close all the files */
   struct thread *t;
   struct list_elem *l;
-  t = thread_current ();
   
-
-  /* Close all the files */
+  t = thread_current ();
   while (!list_empty (&t->files))
     {
-      l = list_pop_front (&t->files);
+      l = list_begin (&t->files);
       sys_close (list_entry (l, struct fd_elem, thread_elem)->fd);
     }
   
   t->ret_status = status;
-
-  /* == My Implementation */
   thread_exit ();
   return -1;
 }
@@ -181,31 +182,29 @@ sys_halt (void)
 static int
 sys_create (const char *file, unsigned initial_size)
 {
-  // return -1;
-  /*  My Implementation */
+ // return -1;
   if (!file)
     return sys_exit (-1);
   return filesys_create (file, initial_size);
-  /* == My Implementation */
 }
 
 static int
 sys_open (const char *file)
 {
-  
-  /*  My Implementation */
-
   struct file *f;
   struct fd_elem *fde;
-  int ret=-1;
+  int ret;
+  
+  ret = -1; /* Initialize to -1 */
   if (!file) /* file == NULL */
     return -1;
-  lock_acquire(&file_lock);
+  if (!is_user_vaddr (file))
+    sys_exit (-1);
   f = filesys_open (file);
   if (!f) /* Bad file name */
     goto done;
     
-  fde = (struct fd_elem *)palloc_get_page (0);
+  fde = (struct fd_elem *)malloc (sizeof (struct fd_elem));
   if (!fde) /* Not enough memory */
     {
       file_close (f);
@@ -218,86 +217,77 @@ sys_open (const char *file)
   list_push_back (&thread_current ()->files, &fde->thread_elem);
   ret = fde->fd;
 done:
-  lock_release(&file_lock);
   return ret;
-  /* == My Implementation */
 }
 
 static int
 sys_close(int fd)
 {
-  /*  My Implementation */
   struct fd_elem *f;
-  int ret = -1;
-  lock_acquire(&file_lock);
-  f = find_fd_elem_by_fd (fd);
+  int ret;
+  
+  f = find_fd_elem_by_fd_in_process (fd);
   
   if (!f) /* Bad fd */
     goto done;
-  // free memory used by f's file
   file_close (f->file);
-
-  // remove the thread from file 
   list_remove (&f->elem);
   list_remove (&f->thread_elem);
+  free (f);
   
-  // free memory used by fd_elem
-  palloc_free_page (f);
-  ret = 0;
 done:
-  lock_release(&file_lock);
-  return ret;
-  /* == My Implementation */
+  return 0;
 }
 
 static int
 sys_read (int fd, void *buffer, unsigned size)
 {
   // return -1;
-  /*
-Reads size bytes from the file open as fd into buffer.
-Returns the number of bytes actually read (0 at end of file), 
-or -1 if the file could not be read (due to a condition other than end of file).
-Fd 0 reads from the keyboard using input_getc().
 
-  */
-  /* My Implementation */
   struct file * f;
   unsigned i;
-  int ret = -1;
-  lock_acquire(&file_lock);
+  int ret;
+  
+  ret = -1; /* Initialize to zero */
+  lock_acquire (&file_lock);
   if (fd == STDIN_FILENO) /* stdin */
     {
       for (i = 0; i != size; ++i)
         *(uint8_t *)(buffer + i) = input_getc ();
-      return size;
+      ret = size;
+      goto done;
     }
   else if (fd == STDOUT_FILENO) /* stdout */
-    goto done;
-  else if (!is_user_vaddr (buffer)) /* bad ptr */
-    sys_exit (-1);
+      goto done;
+  else if (!is_user_vaddr (buffer) || !is_user_vaddr (buffer + size)) /* bad ptr */
+    {
+      lock_release (&file_lock);
+      sys_exit (-1);
+    }
   else
     {
       f = find_file_by_fd (fd);
       if (!f)
         goto done;
-      return file_read (f, buffer, size);
+      ret = file_read (f, buffer, size);
     }
-  done:    
-    lock_release (&file_lock);
-    return ret;  
-  /* == My Implementation */
+    
+done:    
+  lock_release (&file_lock);
+  return ret;
 }
+
 static int
-sys_exec (const char * cmd)
+sys_exec (const char *cmd)
 {
-    int ret;
-    if (!cmd || !is_user_vaddr (cmd)) /* bad ptr */
-      return -1;
-    lock_acquire (&file_lock);
-    ret = process_execute (cmd);
-    lock_release (&file_lock);
-    return ret;
+  int ret;
+  
+  if (!cmd || !is_user_vaddr (cmd)) /* bad ptr */
+    return -1;
+  lock_acquire (&file_lock);
+  ret = process_execute (cmd);
+  lock_release (&file_lock);
+  return ret;
 }
 
 static int
@@ -306,19 +296,17 @@ sys_wait (pid_t pid)
   return process_wait (pid);
 }
 
-static int sys_remove (const char *file)
- {
-   if (!file)
-     return false;
-   if (!is_user_vaddr (file))
-     sys_exit (-1);
-     
-   return filesys_remove (file);
- }
-//custom functions -
+static struct file *
+find_file_by_fd (int fd)
+{
+  struct fd_elem *ret;
+  
+  ret = find_fd_elem_by_fd (fd);
+  if (!ret)
+    return NULL;
+  return ret->file;
+}
 
-
-//linear search for fd in the (global) file_list 
 static struct fd_elem *
 find_fd_elem_by_fd (int fd)
 {
@@ -335,32 +323,15 @@ find_fd_elem_by_fd (int fd)
   return NULL;
 }
 
-
-// search for fd, then return its -> file.
-static struct file *
-find_file_by_fd (int fd)
-{
-  struct fd_elem *ret;
-  
-  ret = find_fd_elem_by_fd (fd);
-  if (!ret)
-    return NULL;
-  return ret->file;
-}
-
-
-// give a unique file id.
 static int
 alloc_fid (void)
 {
-  static int fid = 2; //initialize to 2
+  static int fid = 2;
   return fid++;
 }
 
-
 static int
-sys_filesize (
-int fd)
+sys_filesize (int fd)
 {
   struct file *f;
   
@@ -393,29 +364,32 @@ sys_seek (int fd, unsigned pos)
   return 0; /* Not used */
 }
 
+static int
+sys_remove (const char *file)
+{
+  if (!file)
+    return false;
+  if (!is_user_vaddr (file))
+    sys_exit (-1);
+    
+  return filesys_remove (file);
+}
+
 static struct fd_elem *
- find_fd_elem_by_fd_in_process (int fd)
- {
-   struct fd_elem *ret;
-   struct list_elem *l;
-   struct thread *t;
-   t = thread_current ();
-   for (l = list_begin (&t->files); l != list_end (&t->files); l = list_next (l))
-     {
-       ret = list_entry (l, struct fd_elem, elem);
-       if (ret->fd == fd)
-         return ret;
-     }
-     
-   return NULL;
- }
- 
- static struct file *
- find_file_by_fd_in_process (int fd)
- {
-   struct fd_elem *ret; 
-   ret = find_fd_elem_by_fd_in_process (fd);
-   if (!ret)
-     return NULL;
-   return ret->file;
- }
+find_fd_elem_by_fd_in_process (int fd)
+{
+  struct fd_elem *ret;
+  struct list_elem *l;
+  struct thread *t;
+  
+  t = thread_current ();
+  
+  for (l = list_begin (&t->files); l != list_end (&t->files); l = list_next (l))
+    {
+      ret = list_entry (l, struct fd_elem, thread_elem);
+      if (ret->fd == fd)
+        return ret;
+    }
+    
+  return NULL;
+}

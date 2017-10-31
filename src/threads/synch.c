@@ -1,4 +1,30 @@
+/* This file is derived from source code for the Nachos
+   instructional operating system.  The Nachos copyright notice
+   is reproduced in full below. */
 
+/* Copyright (c) 1992-1996 The Regents of the University of California.
+   All rights reserved.
+
+   Permission to use, copy, modify, and distribute this software
+   and its documentation for any purpose, without fee, and
+   without written agreement is hereby granted, provided that the
+   above copyright notice and the following two paragraphs appear
+   in all copies of this software.
+
+   IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO
+   ANY PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR
+   CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF THIS SOFTWARE
+   AND ITS DOCUMENTATION, EVEN IF THE UNIVERSITY OF CALIFORNIA
+   HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+   THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY
+   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+   PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS IS"
+   BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATION TO
+   PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
+   MODIFICATIONS.
+*/
 
 #include "threads/synch.h"
 #include <stdio.h>
@@ -204,11 +230,11 @@ lock_acquire (struct lock *lock)
   struct lock *another;
   enum intr_level old_level;
   
+  old_level = intr_disable ();
   curr = thread_current ();
   thrd = lock->holder;
   curr->blocked = another = lock;
   
-  old_level = intr_disable ();
   
   while (!thread_mlfqs && thrd != NULL && thrd->priority < curr->priority)
     {
@@ -224,7 +250,6 @@ lock_acquire (struct lock *lock)
       else
         break;
     }
-  
   /* == My Implementation */
 
   sema_down (&lock->semaphore);
@@ -233,10 +258,11 @@ lock_acquire (struct lock *lock)
   
   /* My Implementation */
   lock->holder = curr;
-  if (!thread_mlfqs) {
-  	curr->blocked = NULL;
-  	list_insert_ordered (&lock->holder->locks, &lock->holder_elem, outstanding_priority, NULL);
-  }
+  if (!thread_mlfqs)
+    {
+      curr->blocked = NULL;
+      list_insert_ordered (&lock->holder->locks, &lock->holder_elem, outstanding_priority, NULL);
+    }
   intr_set_level (old_level);
   /* == My Implementation */
   
@@ -284,8 +310,9 @@ lock_release (struct lock *lock)
   enum intr_level old_level;
   
   curr = thread_current ();
+  
   if (!thread_mlfqs)
-  	ASSERT (curr->blocked == NULL);
+    ASSERT (curr->blocked == NULL);
   /* == My Implementation */
   
   ASSERT (lock != NULL);
@@ -297,23 +324,25 @@ lock_release (struct lock *lock)
   sema_up (&lock->semaphore);
   
   /* My Implementation */
-  if (!thread_mlfqs) {
-  	list_remove (&lock->holder_elem);
-  	lock->lock_priority = PRI_MIN - 1;
-  	if (list_empty (&curr->locks)) {
-      	curr->donated = false;
-      	thread_set_priority (curr->base_priority);
+  if (!thread_mlfqs)
+    {
+      list_remove (&lock->holder_elem);
+      lock->lock_priority = PRI_MIN - 1;
+      if (list_empty (&curr->locks))
+        {
+          curr->donated = false;
+          thread_set_priority (curr->base_priority);
+        }
+      else /* Still holding locks */
+        {
+          l = list_back (&curr->locks); //, outstanding_priority, NULL);
+          another = list_entry (l, struct lock, holder_elem);
+          if (another->lock_priority != PRI_MIN - 1)
+            thread_set_priority_other (curr, another->lock_priority, false);
+          else
+            thread_set_priority (curr->base_priority);
+        }
     }
-  	else /* Still holding locks */ {
-      l = list_back (&curr->locks); //, outstanding_priority, NULL);
-      another = list_entry (l, struct lock, holder_elem);
-      if (another->lock_priority != PRI_MIN - 1)
-        thread_set_priority_other (curr, another->lock_priority, false);
-      else
-        thread_set_priority (curr->base_priority);
-    }
-   }
-    
   intr_set_level (old_level);
   /* == My Implementation */
   
@@ -442,7 +471,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
                           struct semaphore_elem, elem)->semaphore);
                           
   /* My Implementation */
-  thread_yield_head (thread_current ());
+  //thread_yield_head (thread_current ());
   /* == My Implementation */
 }
 

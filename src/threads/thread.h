@@ -28,20 +28,23 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* My Implementation */
 #define NICE_MAX 20
 #define NICE_DEFAULT 0
 #define NICE_MIN -20
+
 #ifdef USERPROG
 # define RET_STATUS_DEFAULT 0xcdcdcdcd
 #endif
-/* A kernel thread or user process.
+/* == My Implementation */
 
+/* A kernel thread or user process.
    Each thread structure is stored in its own 4 kB page.  The
    thread structure itself sits at the very bottom of the page
    (at offset 0).  The rest of the page is reserved for the
    thread's kernel stack, which grows downward from the top of
    the page (at offset 4 kB).  Here's an illustration:
-
         4 kB +---------------------------------+
              |          kernel stack           |
              |                |                |
@@ -63,22 +66,18 @@ typedef int tid_t;
              |               name              |
              |              status             |
         0 kB +---------------------------------+
-
    The upshot of this is twofold:
-
       1. First, `struct thread' must not be allowed to grow too
          big.  If it does, then there will not be enough room for
          the kernel stack.  Our base `struct thread' is only a
          few bytes in size.  It probably should stay well under 1
          kB.
-
       2. Second, kernel stacks must not be allowed to grow too
          large.  If a stack overflows, it will corrupt the thread
          state.  Thus, kernel functions should not allocate large
          structures or arrays as non-static local variables.  Use
          dynamic allocation with malloc() or palloc_get_page()
          instead.
-
    The first symptom of either of these problems will probably be
    an assertion failure in thread_current(), which checks that
    the `magic' member of the running thread's `struct thread' is
@@ -109,8 +108,9 @@ struct thread
     struct list locks;                  /* the list of locks that it holds */
     bool donated;                       /* whether the thread has been donated priority */
     struct lock *blocked;               /* by which lock this thread is blocked */
-    int recent_cpu;
-    int nice;
+    
+    int nice;                           /* nice value of a thread */
+    int recent_cpu;                     /* recent cpu usage */
     /* == My Implementation */
     
 #ifdef USERPROG
@@ -119,13 +119,11 @@ struct thread
     
     /* My Implementation */
     struct semaphore wait;              /* semaphore for process_wait */
-    int ret_status;  
-    //UP03
-    struct list files; /* List of the files opened by this thread */ 
-    struct file *self;
-    struct thread *parent;
+    int ret_status;                     /* return status */
+    struct list files;                  /* all opened files */
+    struct file *self;                  /* the image file on the disk */
+    struct thread *parent;              /* parent process */
     /* == My Implementation */
-
 #endif
 
     /* Owned by thread.c. */
@@ -164,13 +162,15 @@ void thread_foreach (thread_action_func *, void *);
 void sort_thread_list (struct list *l);
 void thread_set_priority_other (struct thread *curr, int new_priority, bool forced);
 void thread_yield_head (struct thread *curr);
-/* == My Implementation */
-void thread_calculate_load_avg(void);
+
+void thread_calculate_load_avg (void);
 void thread_calculate_recent_cpu (void);
 void thread_calculate_priority (void);
 void thread_calculate_recent_cpu_for_all (void);
 void thread_calculate_priority_for_all (void);
 struct thread *get_thread_by_tid (tid_t);
+/* == My Implementation */
+
 int thread_get_priority (void);
 void thread_set_priority (int);
 

@@ -8,8 +8,8 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 /* My Implementation */
-#include "threads/fixed-point.h"
 #include "threads/alarm.h"
+#include "threads/fixed-point.h"
 /* == My Implementation */
   
 /* See [8254] for hardware details of the 8254 timer chip. */
@@ -184,7 +184,7 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
@@ -193,16 +193,18 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   /* My Implementation */
-  if (thread_mlfqs)  {
+  if (thread_mlfqs)
+  {
     thread_current ()->recent_cpu = INT_ADD (thread_current ()->recent_cpu, 1);
-    if (ticks % TIMER_FREQ == 0) {/* do this every second */
-  	 thread_calculate_load_avg ();
-     thread_calculate_recent_cpu_for_all();
-    }
+    if (ticks % TIMER_FREQ == 0) /* do this every second */
+      {
+        thread_calculate_load_avg ();
+        thread_calculate_recent_cpu_for_all ();
+      }
     if (ticks % 4 == 3)
-    	thread_calculate_priority_for_all ();
+      thread_calculate_priority_for_all ();
   }
-  alarm_check ();
+  alarm_check (); /* Check the alarm and wake up threads */
   /* == My Implementation */
 }
 
