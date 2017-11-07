@@ -34,8 +34,10 @@ typedef int tid_t;
 #define NICE_DEFAULT 0
 #define NICE_MIN -20
 
+
 #ifdef USERPROG
 # define RET_STATUS_DEFAULT 0xcdcdcdcd
+
 #endif
 /* == My Implementation */
 
@@ -123,6 +125,7 @@ struct thread
     struct list files;                  /* all opened files */
     struct file *self;                  /* the image file on the disk */
     struct thread *parent;              /* parent process */
+    void *user_stack;               /* user stack boundary */
     /* == My Implementation */
 #endif
 
