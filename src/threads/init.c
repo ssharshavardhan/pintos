@@ -99,9 +99,6 @@ main (void)
   palloc_init ();
   malloc_init ();
   paging_init ();
- /* My Implementation */
-   vm_init ();
-   /* == My Implementation */
   /* Segmentation. */
 #ifdef USERPROG
   tss_init ();
@@ -128,6 +125,11 @@ main (void)
   disk_init ();
   filesys_init (format_filesys);
 #endif
+/* My Implementation */
+#ifdef VM
+  vm_init ();
+#endif
+/* == My Implementation */
 
   printf ("Boot complete.\n");
   
