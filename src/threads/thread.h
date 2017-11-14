@@ -37,6 +37,7 @@ typedef int tid_t;
 
 #ifdef USERPROG
 # define RET_STATUS_DEFAULT 0xcdcdcdcd
+# define RET_STATUS_INVALID 0xdcdcdcdc
 
 #endif
 /* == My Implementation */
@@ -125,6 +126,10 @@ struct thread
     struct list files;                  /* all opened files */
     struct file *self;                  /* the image file on the disk */
     struct thread *parent;              /* parent process */
+    struct list children;               /* all children process */
+    struct list_elem children_elem;     /* in children list */
+    bool exited;                        /* whether the thread is exited or not */
+
     void *user_stack;               /* user stack boundary */
     /* == My Implementation */
 #endif

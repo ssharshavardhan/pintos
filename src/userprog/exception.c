@@ -128,6 +128,7 @@ kill (struct intr_frame *f)
 static void
 page_fault (struct intr_frame *f) 
 {
+  
   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
@@ -165,6 +166,8 @@ page_fault (struct intr_frame *f)
   /* My Implementation */
   t = thread_current ();
   #ifdef VM
+
+  // printf (">>>fault_addr: %p\n", fault_addr);
   if (f->esp - fault_addr == 4 || f->esp - fault_addr == 32)
      {
        vm_page_create (t->pagedir, t->user_stack -= PGSIZE, fs, SECTOR_ERROR);

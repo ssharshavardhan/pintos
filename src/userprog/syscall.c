@@ -14,6 +14,7 @@
 #include "threads/malloc.h"
 #include "devices/input.h"
 #include "threads/synch.h"
+#include "vm/vm.h"
 /* == My Implementation */
 
 static void syscall_handler (struct intr_frame *);
@@ -21,7 +22,7 @@ static void syscall_handler (struct intr_frame *);
 /* My Implementation */
 
 typedef int pid_t;
-typedef int mapid_t;
+// typedef int mapid_t;
 
 static int sys_write (int fd, const void *buffer, unsigned length);
 static int sys_halt (void);
@@ -111,8 +112,9 @@ syscall_handler (struct intr_frame *f /* Old Implementation UNUSED */)
   
   h = syscall_vec[*p];
   
-  if (!(is_user_vaddr (p + 1) && is_user_vaddr (p + 2) && is_user_vaddr (p + 3)))
+  if (!(is_user_vaddr (p + 1) && is_user_vaddr (p + 2) && is_user_vaddr (p + 3))){
     goto terminate;
+  }
 
    // Makes a call to the function at frame's stack pointer
   ret = h (*(p + 1), *(p + 2), *(p + 3));
@@ -293,7 +295,10 @@ sys_exec (const char *cmd)
   int ret;
   
   if (!cmd || !is_user_vaddr (cmd)) /* bad ptr */
-    return -1;
+  {
+    printf(">>><<<\n");
+      return -1;
+  }
   lock_acquire (&file_lock);
   ret = process_execute (cmd);
   lock_release (&file_lock);
@@ -404,16 +409,20 @@ find_fd_elem_by_fd_in_process (int fd)
   return NULL;
 }
 static mapid_t sys_mmap (int fd, void *vaddr){
+  
+  struct fd_elem *f;
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO || !vaddr)
     return -1;
-  if (!find_fd_elem_by_fd_in_process (fd))
+  
+  if (!(f=find_fd_elem_by_fd_in_process (fd)))
     return -1;
   if ((uint32_t)vaddr % PGSIZE != 0) /* miss-align */
    return -1;
-  return 0; 
+  // return 0; 
+  return vm_mmap (thread_current ()->pagedir, f->file, vaddr);
 }
  
 static void sys_munmap (mapid_t mapid)
  {
-   return;
+  return vm_munmap (mapid);
  }

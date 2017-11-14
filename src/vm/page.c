@@ -7,7 +7,7 @@
 #include "userprog/pagedir.h"
 #include <string.h> /* memset */
 #include "threads/vaddr.h"
-
+#include "devices/disk.h"
 static struct list pagedirs; /* page directories */
 static struct lock pagelock; /* lock for pagedirs */
 
@@ -20,6 +20,7 @@ vm_init (void)
   vm_page_init ();
   vm_swap_init ();
 
+  vm_mmap_init ();
 }
 
 void
@@ -39,7 +40,7 @@ vm_pagedir_create (uint32_t *pd)
   bool success;
   
   ASSERT (pd);
-  ASSERT (!find_spde_by_pd (pd));
+ // ASSERT (!find_spde_by_pd (pd));
   
   success = false;
   lock_acquire (&pagelock);
@@ -92,6 +93,7 @@ struct spte_t * vm_page_create (uint32_t *pd, void *vaddr, struct disk *disk, di
     goto done;
   ret->upage = vaddr;
   ret->spde = spde;
+  ret->mmapped = false;
   ret->swap = malloc (sizeof (struct swap_t));
   ASSERT (ret->swap);
   ret->swap->page = ret;
@@ -122,10 +124,26 @@ void
 vm_page_destroy (struct spte_t *spte)
 {
   struct spde_t *spde;  
+   disk_sector_t off;
   spde = spte->spde;
   ASSERT (spte && spde);
   lock_acquire (&spde->mutex);
+  // pagedir_clear_page (spde->pd, spte->upage);
   list_remove (&spte->elem);
+
+  if (spte->mmapped){
+    // list_remove (&spte->mmap_elem);
+      {
+      if (pagedir_is_dirty (spte->spde->pd, spte->upage))
+        {
+          for (off = 0; off != SLOT_SIZE; ++off)
+            disk_write (spte->swap->disk, spte->swap->sector + off, spte->fte->kpage + PGSIZE * off / SLOT_SIZE);
+        }
+      list_remove (&spte->mmap_elem);
+    }
+  pagedir_clear_page (spde->pd, spte->upage);
+
+  }
   vm_free_frame (spte->fte);
   vm_free_slot (spte->swap);
   free (spte->swap);
