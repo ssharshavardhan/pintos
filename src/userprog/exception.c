@@ -178,7 +178,7 @@ page_fault (struct intr_frame *f)
        else /* No such page at all */
          sys_exit (-1);
      }
- +#endif
+ #endif
   if (not_present || (is_kernel_vaddr (fault_addr) && user) || (!not_present && write))
     sys_exit (-1);
   /* == My Implementation */
